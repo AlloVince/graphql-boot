@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/AlloVince/graphql-boot.git"
+    "url": "https://github.com/AlloVince/graphql-boot.git"
   },
   "scripts": {
     "pretest": "npm run build",
@@ -14,7 +14,9 @@
     "ava": "LOG_LEVEL=error NODE_ENV=test ava --verbose --serial",
     "test": "nyc -a --reporter=lcov --reporter=text --reporter=html npm run ava",
     "lint": "eslint src/* --ext .js",
-    "build": "babel -d lib/ src/"
+    "build": "babel -d lib/ src/",
+    "semantic-release": "semantic-release",
+    "travis-deploy-once": "travis-deploy-once"
   },
   "engines": {
     "node": ">=6.0.0"
@@ -78,7 +80,7 @@
     "nock": "^9.2.3",
     "nyc": "^11.6.0",
     "pre-commit": "^1.2.2",
-    "semantic-release": "^15.1.5",
+    "semantic-release": "^15.1.7",
     "travis-deploy-once": "^4.4.1"
   }
 }
