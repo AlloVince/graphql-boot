@@ -1,2 +1,4 @@
-# graphql-boot
-Best practice for node.js GraphQL project
+# GraphQLBoot
+
+Maybe the best practice for GraphQL on node.js project.
+
