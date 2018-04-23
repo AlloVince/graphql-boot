@@ -1,6 +1,6 @@
 # GraphQLBoot
 
-[![NPM version](https://img.shields.io/npm/v/graphql-boot.svg?style=flat-square)](http://badge.fury.io/js/evaengine)
+[![NPM version](https://img.shields.io/npm/v/graphql-boot.svg?style=flat-square)](http://badge.fury.io/js/graphql-boot)
 [![Build Status](https://travis-ci.org/AlloVince/graphql-boot.svg?branch=master)](https://travis-ci.org/AlloVince/graphql-boot)
 [![Dependencies Status](https://david-dm.org/AlloVince/graphql-boot.svg)](https://david-dm.org/AlloVince/graphql-boot)
 [![npm](https://img.shields.io/npm/dm/graphql-boot.svg?maxAge=2592000)](https://www.npmjs.com/package/graphql-boot)
