@@ -77,4 +77,4 @@ app.use('/ui', graphqlBoot.getUI({ endpointURL: '/v1/graphql/api' }));
 app.listen(4000, () => console.log('Now browse to localhost:4000/graphiql'));
 ```
 
-Check a full project to get more details: [avncp.js](https://github.com/AlloVince/avnpc.js)
+Check a full project to get more details: [avnpc.js](https://github.com/AlloVince/avnpc.js)
