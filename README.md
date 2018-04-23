@@ -11,10 +11,10 @@ Maybe the best practice for GraphQL on node.js project.
 
 Features:
 
-- Using decorator `@GraphqlSchema` to define GraphQL schema so than you could write schema & resolver together
+- Using decorator `@GraphqlSchema` to define GraphQL schema so that you could write schema & resolver together
 - `graphql` tag for IDE syntax highlight
 - Scanning all `*.graphqls` file as GraphQL schema, for better experience of WebStorm Plugin [JS GraphQL](https://github.com/jimkyndemeyer/js-graphql-intellij-plugin)
-- Built-in common scalars such as `JSON`/`URL`/`Timestamp`, etc.
+- Built-in common scalars such as `JSON`/`URL`/`Timestamp`/`Range`, etc.
 
 
 Before using GraphQLBoot:
