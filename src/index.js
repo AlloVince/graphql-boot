@@ -8,7 +8,7 @@ import { GraphQLScalarType } from 'graphql';
 import { Kind } from 'graphql/language';
 
 /**
- * For supporting IDE syntax graphql```
+ * For supporting IDE syntax graphql`
  * @param v
  * @returns {*}
  */
