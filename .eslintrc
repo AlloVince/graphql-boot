@@ -30,6 +30,12 @@
         "asyncArrow": "ignore"
       }
     ],
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allowAfterThis": true
+      }
+    ],
     "no-await-in-loop": [
       0
     ]

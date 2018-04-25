@@ -56,6 +56,7 @@ After using GraphQLBoot:
 
 ```js
 import GraphqlBoot, {GraphqlSchema, graphql} from 'graphql-boot';
+import { graphiqlExpress, graphqlExpress } from 'apollo-server-express/dist/index';
 import express from 'express';
 
 const app = express();
@@ -72,8 +73,13 @@ const resolvers = {
   }
 }
 const graphqlBoot = new GraphqlBoot();
-app.use('/api', graphqlBoot.getMiddleware({resolvers}));
-app.use('/ui', graphqlBoot.getUI({ endpointURL: '/v1/graphql/api' }));
+app.use('/api', graphqlExpress({
+  schema: graphqlBoot.getSchema({
+    typeDefs: [],
+    resolvers
+  })
+}));
+app.use('/graphiql', graphiqlExpress({ endpointURL: '/api' }));
 app.listen(4000, () => console.log('Now browse to localhost:4000/graphiql'));
 ```
 
