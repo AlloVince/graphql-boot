@@ -4,6 +4,7 @@
 [![Build Status](https://travis-ci.org/AlloVince/graphql-boot.svg?branch=master)](https://travis-ci.org/AlloVince/graphql-boot)
 [![Dependencies Status](https://david-dm.org/AlloVince/graphql-boot.svg)](https://david-dm.org/AlloVince/graphql-boot)
 [![npm](https://img.shields.io/npm/dm/graphql-boot.svg?maxAge=2592000)](https://www.npmjs.com/package/graphql-boot)
+[![codecov](https://codecov.io/gh/AlloVince/graphql-boot/branch/master/graph/badge.svg)](https://codecov.io/gh/AlloVince/graphql-boot)
 [![License](https://img.shields.io/npm/l/graphql.svg?maxAge=2592000?style=plastic)](https://github.com/AlloVince/graphql-boot/blob/master/LICENSE)
 
 
@@ -14,7 +15,8 @@ Features:
 - Using decorator `@GraphqlSchema` to define GraphQL schema so that you could write schema & resolver together
 - `graphql` tag for IDE syntax highlight
 - Scanning all `*.graphqls` file as GraphQL schema, for better experience of WebStorm Plugin [JS GraphQL](https://github.com/jimkyndemeyer/js-graphql-intellij-plugin)
-- Built-in common scalars such as `JSON`/`URL`/`Timestamp`/`Range`, etc.
+- Built-in common scalars such as `JSON`/`URL`/`UnixTimestamp`/`Range`, etc.
+- Connection maker to help you create relay connection with database easier
 
 
 Before using GraphQLBoot:
