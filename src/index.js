@@ -2,12 +2,25 @@ import fs from 'fs';
 import path from 'path';
 import glob from 'glob';
 import assert from 'assert';
+import querystring from 'querystring';
 import merge from 'lodash.merge';
 import { makeExecutableSchema } from 'graphql-tools';
 import { GraphQLScalarType } from 'graphql'; //eslint-disable-line
 import { Kind } from 'graphql/language'; //eslint-disable-line
 
+const GRAPHQL_DEBUG = !!process.env.GRAPHQL_DEBUG;
+
 export const utils = {
+  /**
+   * @param inputString
+   * @returns {string}
+   */
+  base64Encode: inputString => Buffer.from(inputString).toString('base64'),
+  /**
+   * @param inputString
+   * @returns {string}
+   */
+  base64Decode: inputString => Buffer.from(inputString, 'base64').toString('utf8'),
   /**
    * Remove null/undefined properties from an object
    * @param {object} inputObject
@@ -18,16 +31,72 @@ export const utils = {
       .entries(inputObject)
       .filter(([, value]) => value !== undefined && value !== null)
       .reduce((obj, [k, v]) => ({ ...obj, [k]: v }), {})
+
 };
 
 /**
- * For supporting IDE syntax graphql```
+ * For supporting IDE syntax graphql`
  * @param v
  * @returns {string}
  */
 export const graphql = v => v[0];
 
-export class Range {
+class Cursor {
+  constructor({
+    primaryKey, primaryValue, field, offset
+  }) {
+    this.primaryKey = primaryKey;
+    this.primaryValue = primaryValue ? Number.parseInt(primaryValue, 10) : null;
+    assert(!Number.isNaN(this.primaryValue), 'primaryValue must be Number type');
+    this.field = field;
+    this.offset = Number.parseInt(offset, 10);
+  }
+
+  /**
+   * @param {string} cursorString
+   * @returns {Cursor}
+   */
+  static factory(cursorString) {
+    const {
+      pK: primaryKey, pV: primaryValue, f: field, o: offset
+    } = querystring
+      .parse(GRAPHQL_DEBUG
+        ? cursorString
+        : utils.base64Decode(cursorString));
+    return new Cursor(utils.filterObject({
+      primaryKey,
+      primaryValue,
+      field,
+      offset
+    }));
+  }
+
+  clone({ offset, primaryValue } = {}) {
+    return new Cursor({
+      primaryKey: this.primaryKey,
+      primaryValue: primaryValue || this.primaryValue,
+      field: this.field,
+      offset: offset || this.offset
+    });
+  }
+
+  /**
+   * @returns {string}
+   */
+  toString() {
+    const obj = utils.filterObject({
+      pK: this.primaryKey,
+      pV: this.primaryValue,
+      f: this.field,
+      o: this.offset
+    });
+    return GRAPHQL_DEBUG
+      ? querystring.stringify(obj)
+      : utils.base64Encode(querystring.stringify(obj));
+  }
+}
+
+class Range {
   constructor({
     query,
     fromOperator,
@@ -49,11 +118,11 @@ export class Range {
   static factory(inputString) {
     const matches = /^([[(])([\w:-]+)?,([\w:-]+)?([\])])$/.exec(inputString);
     if (!matches) {
-      return null;
+      throw new SyntaxError(`Scalar Range ${inputString} syntax incorrect`);
     }
     const [, fromOperator, fromValue, toValue, toOperator] = matches;
     if (!fromValue && !toValue) {
-      return null;
+      throw new SyntaxError(`Scalar Range ${inputString} syntax incorrect`);
     }
     const query = {};
     if (fromValue) {
@@ -69,6 +138,184 @@ export class Range {
       toValue,
       toOperator
     });
+  }
+
+  toString() {
+    return `${this.fromOperator}${this.fromValue},${this.toValue}${this.toOperator}`;
+  }
+}
+
+class SortOrder {
+  constructor({
+    field,
+    direction
+  }) {
+    this.field = field;
+    this.direction = direction;
+  }
+
+  static factory(inputString) {
+    const matches = /^[+-]?\w+$/.exec(inputString);
+    if (!matches) {
+      throw new SyntaxError(`Scalar SortOrder ${inputString} syntax incorrect`);
+    }
+    const startCharacter = inputString.slice(0, 1);
+    return startCharacter === '-' ? new SortOrder({
+      field: inputString.slice(1),
+      direction: 'DESC'
+    }) : new SortOrder({
+      field: startCharacter === '+' ? inputString.slice(1) : inputString,
+      direction: 'ASC'
+    });
+  }
+
+  toString() {
+    return `${this.direction === 'DESC' ? '-' : ''}${this.field}`;
+  }
+
+  toArray(secondaryOrder) {
+    if (!secondaryOrder) {
+      return [[this.field, this.direction]];
+    }
+    const subOrder = SortOrder.factory(secondaryOrder);
+    return this.field === subOrder.field
+      ? [[this.field, this.direction]]
+      : [[this.field, this.direction], [subOrder.field, subOrder.direction]];
+  }
+}
+
+export const Types = {
+  Range,
+  SortOrder,
+  Cursor
+};
+
+
+export class Connection {
+  constructor({
+    totalCount,
+    first,
+    after,
+    last,
+    before,
+    order,
+    defaultOrder,
+    secondaryOrder,
+    primaryKey,
+    maxLimit = 100
+  }) {
+    assert((first || last), 'Making connection require (first or last)');
+    assert((order || defaultOrder) && maxLimit, 'Making connection require (order || defaultOrder) & max limit');
+
+    this.order = order ? Types.SortOrder.factory(order) : Types.SortOrder.factory(defaultOrder);
+    assert((first && this.order.direction === 'ASC') || (last && this.order.direction === 'DESC'), 'Param first require ASC order, param last require DESC order');
+
+    this.totalCount = totalCount || null;
+    this.secondaryOrder = secondaryOrder;
+    this.primaryKey = primaryKey;
+    this.nodes = null;
+    this.cursor = null;
+
+    if (first) {
+      this.limit = first;
+      this.cursor = after ? Types.Cursor.factory(after) : new Types.Cursor({
+        primaryKey,
+        field: this.order.field,
+        offset: 0
+      });
+    } else if (last) {
+      this.limit = last;
+      this.cursor = before ? Types.Cursor.factory(before) : new Types.Cursor({
+        primaryKey,
+        field: this.order.field,
+        offset: 0
+      });
+    }
+    assert(this.limit < maxLimit, 'Too many query items');
+  }
+
+  /**
+   * @returns {Types.Cursor}
+   */
+  getCursor() {
+    return this.cursor;
+  }
+
+  getSqlQuery(extraQuery = {}) {
+    const {
+      primaryKey, primaryValue, offset
+    } = this.getCursor();
+    const { field } = this.order;
+    if (primaryKey && field === primaryKey && primaryValue) {
+      return {
+        where: {
+          [primaryKey]: this.order.direction === 'ASC' ? {
+            $gt: primaryValue
+          } : {
+            $lt: primaryValue
+          }
+        },
+        limit: this.limit,
+        order: this.order.toArray(this.secondaryOrder)
+      };
+    }
+    return merge({
+      offset,
+      limit: this.limit,
+      order: this.order.toArray(this.secondaryOrder)
+    }, extraQuery);
+  }
+
+  setTotalCount(totalCount) {
+    this.totalCount = totalCount;
+    return this;
+  }
+
+  setNodes(nodes) {
+    this.nodes = nodes;
+    return this;
+  }
+
+  getEdges() {
+    if (!this.nodes) {
+      return [];
+    }
+    const { offset } = this.cursor;
+    return this.nodes.map((node, index) => ({
+      cursor: this.cursor.clone({
+        primaryKey: this.primaryKey,
+        primaryValue: node[this.primaryKey],
+        offset: offset + index + 1
+      }).toString(),
+      node
+    }));
+  }
+
+  getTotalCount() {
+    return this.totalCount;
+  }
+
+  getPageInfo() {
+    assert(!Number.isNaN(Number.parseInt(this.totalCount, 10)), 'SetTotalCount required before getPageInfo');
+    const cursor = this.getCursor();
+    const { offset } = cursor;
+    const isFirst = offset <= 0;
+    const isLast = offset + this.limit >= this.totalCount;
+    return {
+      startCursor: cursor.toString(),
+      endCursor: cursor.clone({ offset: offset + this.limit }).toString(),
+      hasNextPage: !isLast,
+      hasPreviousPage: !isFirst
+    };
+  }
+
+  toJSON() {
+    return {
+      totalCount: this.getTotalCount(),
+      pageInfo: this.getPageInfo(),
+      edges: this.getEdges(),
+      nodes: this.nodes
+    };
   }
 }
 
@@ -91,11 +338,7 @@ export const Scalars = {
         if (kind !== Kind.STRING) {
           throw new SyntaxError();
         }
-        const range = Range.factory(value);
-        if (!range) {
-          throw new SyntaxError();
-        }
-        return range;
+        return Range.factory(value);
       }
     }),
 
@@ -117,14 +360,7 @@ export const Scalars = {
         if (kind !== Kind.STRING) {
           throw new SyntaxError();
         }
-        const startCharacter = value.slice(0, 1);
-        return startCharacter === '-' ? {
-          field: value.slice(1),
-          direction: 'DESC'
-        } : {
-          field: startCharacter === '+' ? value.slice(1) : value,
-          direction: 'ASC'
-        };
+        return SortOrder.factory(value);
       }
     }),
 
